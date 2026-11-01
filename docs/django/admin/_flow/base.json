@@ -1,0 +1,79 @@
+{
+  "version": 1,
+  "nodes": [
+    {
+      "id": "start",
+      "label": "取込開始（Action: Importer.run）",
+      "description": "apps/notes/actions/importer.py。directoryを受け取り、resultsを空にして全体のトランザクションを開始。"
+    },
+    {
+      "id": "read",
+      "label": "JSONを読む（Service: NoteImporter.run → read_json）",
+      "description": "apps/notes/services/importers/note.pyからlib/files/json.pyへファイル読込を依頼。"
+    },
+    {
+      "id": "validate",
+      "label": "全件を検証（Service: NoteImporter.run）",
+      "description": "項目・型と本文を検証。Note.full_cleanを適用する。"
+    },
+    {
+      "id": "save",
+      "label": "各Noteを保存（Model: Note.save）",
+      "description": "apps/notes/models/note.py。順序を採番し、保存signalで履歴も記録。各件に繰り返す。"
+    },
+    {
+      "id": "done",
+      "label": "結果を返す（Action: Importer.run）",
+      "description": "トランザクションを確定。resultsに今回のNoteを保持し件数を返す。"
+    },
+    {
+      "id": "error",
+      "label": "例外を呼び出し元へ返す（Action: Importer.run）",
+      "description": "読込・検証・保存の失敗。DBをロールバックし、今回のNoteと履歴は残さない。"
+    }
+  ],
+  "edges": [
+    {
+      "id": "start-read",
+      "source": "start",
+      "target": "read",
+      "label": "directoryを渡す"
+    },
+    {
+      "id": "read-validate",
+      "source": "read",
+      "target": "validate",
+      "label": "読込成功"
+    },
+    {
+      "id": "validate-save",
+      "source": "validate",
+      "target": "save",
+      "label": "全件正常"
+    },
+    {
+      "id": "save-done",
+      "source": "save",
+      "target": "done",
+      "label": "全件保存成功"
+    },
+    {
+      "id": "read-error",
+      "source": "read",
+      "target": "error",
+      "label": "読込・JSON解析失敗"
+    },
+    {
+      "id": "validate-error",
+      "source": "validate",
+      "target": "error",
+      "label": "検証失敗"
+    },
+    {
+      "id": "save-error",
+      "source": "save",
+      "target": "error",
+      "label": "保存失敗"
+    }
+  ]
+}

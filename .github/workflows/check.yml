@@ -1,0 +1,38 @@
+name: Check
+on: [push, pull_request]
+jobs:
+  check:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.13.5"
+      - run: pnpm install --frozen-lockfile
+      - run: uv sync --all-groups --locked
+      - run: pnpm check
+      - if: runner.os == 'Linux'
+        run: pnpm exec playwright install --with-deps chromium
+      - if: runner.os == 'Linux'
+        run: pnpm test:frontend
+      - if: runner.os == 'macOS'
+        run: pnpm test:desktop
+      - if: runner.os == 'macOS'
+        run: pnpm package:mac
+      - if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          if [ "$(uname -m)" = "arm64" ]; then
+            export DESKTOP_EXECUTABLE="$PWD/native/release/mac-arm64/App Base.app/Contents/MacOS/App Base"
+          else
+            export DESKTOP_EXECUTABLE="$PWD/native/release/mac/App Base.app/Contents/MacOS/App Base"
+          fi
+          pnpm test:desktop

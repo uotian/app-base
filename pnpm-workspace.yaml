@@ -1,0 +1,10 @@
+packages:
+  - frontend
+  - native
+allowBuilds:
+  "@parcel/watcher": true
+  "@swc/core": true
+  electron: true
+  electron-winstaller: false
+  esbuild: true
+  unrs-resolver: true

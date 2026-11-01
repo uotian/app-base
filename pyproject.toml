@@ -1,0 +1,61 @@
+[project]
+name = "app-base-backend"
+version = "0.1.0"
+requires-python = ">=3.13,<3.14"
+dependencies = [
+  "django>=5.2,<5.3",
+  "djangorestframework>=3.16,<4",
+  "django-cors-headers>=4,<5",
+  "waitress>=3,<4",
+  "whitenoise>=6,<7",
+  "mcp>=2,<3",
+  "httpx>=0.28,<1",
+  "pydantic>=2,<3",
+  "drf-spectacular>=0.29,<0.30",
+  "django-unfold>=0.110.0",
+  "django-import-export[xlsx]>=4.4.4",
+  "django-simple-history>=3.13.0",
+  "django-admin-sortable2>=2.3.1",
+  "django-filter>=26.2",
+  "pydantic-settings>=2,<3",
+  "structlog>=26.1.0",
+  "rich>=15.0.0",
+]
+
+[dependency-groups]
+dev = [
+  "ruff",
+  "mypy",
+  "django-stubs>=5.2,<5.3",
+  "djangorestframework-stubs",
+  "types-waitress",
+  "pytest",
+  "pytest-django",
+  "types-django-import-export>=4.4.0.20260813",
+  "pytest-cov>=7.1.0",
+  "hypothesis>=6.170.14",
+  "pip-audit>=2.10.1",
+  "pytest-timeout>=2.4.0",
+]
+build = ["pyinstaller"]
+
+[tool.ruff]
+cache-dir = ".cache/ruff"
+target-version = "py313"
+line-length = 100
+src = ["backend/src", "mcp/src"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+
+[tool.coverage.run]
+branch = true
+patch = ["subprocess"]
+sigterm = true
+data_file = ".cache/coverage/.coverage"
+
+[tool.coverage.report]
+include_namespace_packages = true
+show_missing = true
+precision = 2

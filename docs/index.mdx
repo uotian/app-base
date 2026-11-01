@@ -1,0 +1,33 @@
+---
+title: App Baseの概要
+order: 0
+---
+
+# App Baseの概要
+
+Next.jsの画面とDjangoのAPIをWeb・Electronで共用するテンプレート。業務処理と永続化はbackend、OS連携はElectron、AI向けツールはMCPが担う。
+
+## 提供機能
+
+| 機能               | 内容                                                                                                                 |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------- |
+| 動作確認 `/`       | 実行環境とDjangoの応答を表示。取得失敗時は再試行できる。Web・Desktop共通。                                           |
+| 公開Note `/notes/` | Webで閲覧・追加。新しい順に20件ずつ表示し、本文は空白のみを拒否、最大2,000文字。保存エラーと入力中の離脱確認に対応。 |
+| 管理画面 `/admin/` | 管理者の権限に応じたNote管理。取込・書出し・履歴・並び替えに対応。                                                   |
+| MCP                | `list_notes`・`add_note`からDjango APIを呼び出す。                                                                   |
+| Desktop            | ElectronがローカルPythonを起動・終了し、動作確認画面を表示。OS連携はmacOS判定のみ。                                  |
+
+## 利用上の制約
+
+- Noteはログイン不要の公開データ。所有者や閲覧制限はなく、編集・削除はAdminのみ。
+- DesktopではNote・Adminを提供しない。画面とAPIの両方で制限する。
+- MCPの追加処理に重複防止はない。失敗時も保存済みの可能性があるため、再試行前に一覧を確認する。
+- 戻る・進む時の離脱確認はNavigation API対応ブラウザのみ。
+- macOS以外のネイティブ機能は未対応。
+
+## 関連文書
+
+- [全体構成](./architecture/index.mdx)：責務、通信、データと配布物。
+- [Djangoの実務ノウハウ](./django/index.mdx)：調査、保守スクリプト、変更検知、fixture。
+- [REST APIとOpenAPI](./django/api/index.mdx)：API契約と型生成。
+- [Admin拡張とNote管理](./django/admin/index.mdx)：管理操作とデータ取込。

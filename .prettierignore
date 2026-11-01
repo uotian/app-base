@@ -1,0 +1,20 @@
+pnpm-lock.yaml
+uv.lock
+node_modules/
+**/.next/
+**/out/
+**/dist/
+**/build/
+**/release/
+**/.venv/
+**/.cache/
+**/__pycache__/
+**/.pytest_cache/
+**/.mypy_cache/
+**/.ruff_cache/
+frontend/next-env.d.ts
+playwright-report/
+**/tests/results/
+
+# Keep generator output byte-identical for openapi-typescript --check.
+frontend/src/types/api.d.ts

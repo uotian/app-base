@@ -1,0 +1,210 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "type": "object",
+  "required": ["version", "positions"],
+  "properties": {
+    "version": {
+      "const": 1,
+      "type": "number"
+    },
+    "canvas": {
+      "additionalProperties": false,
+      "type": "object",
+      "required": ["width", "height"],
+      "properties": {
+        "width": {
+          "minimum": 160,
+          "maximum": 10000,
+          "type": "number"
+        },
+        "height": {
+          "minimum": 160,
+          "maximum": 10000,
+          "type": "number"
+        }
+      }
+    },
+    "edges": {
+      "type": "object",
+      "patternProperties": {
+        "^[a-zA-Z0-9_-]+$": {
+          "additionalProperties": false,
+          "type": "object",
+          "required": ["sourceSide", "targetSide"],
+          "properties": {
+            "sourceSide": {
+              "anyOf": [
+                {
+                  "const": "top",
+                  "type": "string"
+                },
+                {
+                  "const": "right",
+                  "type": "string"
+                },
+                {
+                  "const": "bottom",
+                  "type": "string"
+                },
+                {
+                  "const": "left",
+                  "type": "string"
+                }
+              ]
+            },
+            "targetSide": {
+              "anyOf": [
+                {
+                  "const": "top",
+                  "type": "string"
+                },
+                {
+                  "const": "right",
+                  "type": "string"
+                },
+                {
+                  "const": "bottom",
+                  "type": "string"
+                },
+                {
+                  "const": "left",
+                  "type": "string"
+                }
+              ]
+            },
+            "sourceSlot": {
+              "anyOf": [
+                {
+                  "const": "start",
+                  "type": "string"
+                },
+                {
+                  "const": "center",
+                  "type": "string"
+                },
+                {
+                  "const": "end",
+                  "type": "string"
+                }
+              ]
+            },
+            "targetSlot": {
+              "anyOf": [
+                {
+                  "const": "start",
+                  "type": "string"
+                },
+                {
+                  "const": "center",
+                  "type": "string"
+                },
+                {
+                  "const": "end",
+                  "type": "string"
+                }
+              ]
+            },
+            "arrow": {
+              "anyOf": [
+                {
+                  "const": "target",
+                  "type": "string"
+                },
+                {
+                  "const": "source",
+                  "type": "string"
+                },
+                {
+                  "const": "both",
+                  "type": "string"
+                },
+                {
+                  "const": "none",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    "nodeColors": {
+      "type": "object",
+      "patternProperties": {
+        "^[a-zA-Z0-9_-]+$": {
+          "anyOf": [
+            {
+              "const": "green",
+              "type": "string"
+            },
+            {
+              "const": "blue",
+              "type": "string"
+            },
+            {
+              "const": "yellow",
+              "type": "string"
+            },
+            {
+              "const": "pink",
+              "type": "string"
+            },
+            {
+              "const": "purple",
+              "type": "string"
+            },
+            {
+              "const": "black",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    "sizes": {
+      "type": "object",
+      "patternProperties": {
+        "^[a-zA-Z0-9_-]+$": {
+          "additionalProperties": false,
+          "type": "object",
+          "required": ["width", "height"],
+          "properties": {
+            "width": {
+              "minimum": 72,
+              "maximum": 10000,
+              "type": "number"
+            },
+            "height": {
+              "minimum": 32,
+              "maximum": 10000,
+              "type": "number"
+            }
+          }
+        }
+      }
+    },
+    "positions": {
+      "type": "object",
+      "patternProperties": {
+        "^[a-zA-Z0-9_-]+$": {
+          "additionalProperties": false,
+          "type": "object",
+          "required": ["x", "y"],
+          "properties": {
+            "x": {
+              "minimum": -1000000,
+              "maximum": 1000000,
+              "type": "number"
+            },
+            "y": {
+              "minimum": -1000000,
+              "maximum": 1000000,
+              "type": "number"
+            }
+          }
+        }
+      }
+    }
+  }
+}

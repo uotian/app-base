@@ -1,0 +1,77 @@
+---
+title: Admin拡張とNote管理
+order: 2
+---
+
+# Admin拡張とNote管理
+
+Webの`/admin/notes/note/`でNoteを管理する。staffでのログインとモデル権限が必要。Desktopには公開しない。
+
+## 操作と権限
+
+| 操作            | Note権限         | 担当                                 |
+| --------------- | ---------------- | ------------------------------------ |
+| 追加            | add              | Django Admin                         |
+| 編集・並び替え  | change           | Django Admin・django-admin-sortable2 |
+| 削除            | delete           | Django Admin                         |
+| CSV／xlsx取込   | add＋change      | django-import-export                 |
+| CSV／xlsx書出し | view             | django-import-export                 |
+| 履歴閲覧        | viewまたはchange | django-simple-history                |
+
+本文検索と作成日時の絞り込みに対応する。履歴では変更日時・変更者・値を確認できるが、過去状態への復元は提供しない。
+
+テーマはUnfoldを使う。本体と`unfold.contrib.import_export`・`unfold.contrib.simple_history`を対応する標準appより先に登録し、NoteAdminのMixinと`change_list_template`で統合する。並び替えに必要な単一tbodyはNote専用の`change_list_results.html`で用意する。独自JavaScriptは使わない。
+
+## CSV／xlsxの取込・書出し
+
+| 列         | 扱い                                                              |
+| ---------- | ----------------------------------------------------------------- |
+| id         | 空なら新規追加、既存idなら本文を更新                              |
+| text       | 前後の空白を除去し、空白のみ・2,000文字超を拒否。モデル検証を実行 |
+| created_at | 書出し専用。取込で既存の作成日時を変更しない                      |
+
+`position`は対象外。並び替えは一覧画面で行う。旧xls形式は扱わない。
+
+Importでファイルを選び、差分を確認して確定する。確認中は保存せず、確定時のエラーはNote・履歴をまとめてロールバックする。新規行の再取込は重複追加になるため、更新には書き出したidを使う。
+
+数式と解釈され得る本文は、書出し時だけ先頭にアポストロフィを付ける。再取込ではその文字も本文に含まれる。確認待ちファイルは標準の一時保存を使い、複数サーバーで運用する場合は共有ストレージ・保存期限・削除方法を決める。
+
+## 並び順・履歴
+
+| 対象               | 並び順                                                             |
+| ------------------ | ------------------------------------------------------------------ |
+| Admin              | position・idの降順。新規Noteは先頭。別の列でソート中はドラッグ不可 |
+| 公開画面・API・MCP | 作成日時・idの降順。Adminの並び替えを反映しない                    |
+
+migrationは本文・作成日時を維持し、既存の表示順をpositionに移す。同時に導入時点の履歴を作るが、導入以前の履歴は復元できない。既存DBはバックアップ後、ルートで適用する。
+
+```sh
+uv run --env-file python.env python backend/manage.py migrate
+```
+
+Admin・API・各取込は`Note.save()`で履歴を記録する。並び替えの`bulk_update`では同じトランザクション内で履歴を明示的に作る。管理者操作は変更者を記録し、匿名API・CLI取込は変更者なし。削除後も履歴は残る。
+
+履歴は通常のDBテーブルで、改ざん防止機能はない。直接SQLや任意の`QuerySet.update`・bulk操作は履歴の保存経路を通らない。順序の採番は小規模なSQLite向けで、高並行の書込やPostgreSQLへの移行時は排他制御を見直す。
+
+## JSON取込
+
+<Diagram src="./_flow" />
+
+矢印は実行順と失敗時の遷移を示す。
+
+`Importer(directory).run()`が`NoteImporter`を呼び、指定ディレクトリの`notes.json`を全件追加する。形式は`[{"text": "本文"}]`。本文はCSVと同じ条件で検証し、文字列以外・未知の項目も拒否する。起動時には自動実行しない。migration適用後、ルートで実行する。
+
+```sh
+uv run --env-file python.env python backend/manage.py shell -c 'from pathlib import Path; from apps.notes.actions.importer import Importer; print(Importer(Path("backend/var/data")).run())'
+```
+
+- `lib/files/json.py`が読込・JSON解析、`NoteImporter`が検証・保存、Actionの`Importer`が全体のトランザクションを担当する。
+- 全件検証後に`Note.save()`で順序・履歴も保存する。失敗は例外で返し、Note・履歴を残さない。
+- 戻り値は登録件数、両Importerの`results`は今回のNote一覧。初期化時と実行開始時は空で、成功時だけ設定する。
+- 既存Noteは変更せず、再実行でも同じ内容を追加する。
+
+## フィルタ
+
+Adminは標準の`list_filter`、APIはdjango-filterを使う。API側は`django_filters`と`DjangoFilterBackend`の標準設定まで導入済み。適用時はGenericAPIView／GenericViewSetの`filterset_fields`等を定義し、`filter_queryset`を通す。許可するquery parameterは[OpenAPI](../api/index.mdx)に反映する。公開Note APIには未適用。
+
+参考：[Unfoldとimport-export](https://unfoldadmin.com/docs/integrations/django-import-export/)、[Unfoldとsimple-history](https://unfoldadmin.com/docs/integrations/django-simple-history/)、[sortable2](https://django-admin-sortable2.readthedocs.io/en/latest/usage.html)、[simple-historyのbulk操作](https://django-simple-history.readthedocs.io/en/latest/common_issues.html)、[django-filterとDRF](https://django-filter.readthedocs.io/en/stable/guide/rest_framework.html)。

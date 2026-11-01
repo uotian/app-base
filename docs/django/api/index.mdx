@@ -1,0 +1,67 @@
+---
+title: REST APIとOpenAPI
+order: 1
+---
+
+# REST APIとOpenAPI
+
+DRFでAPIを実装し、drf-spectacularでOpenAPI 3.xを生成する。OpenAPIをfrontend・AIエージェントとの契約とし、項目やパスの仕様を別の文書へ転記しない。
+
+## 実装
+
+Model → Serializer → ViewSet／APIView → Router／URLを基本とする。推論できない仕様だけ`extend_schema`等で補い、認証を追加したらsecuritySchemes・securityも検証する。
+
+| API      | 実装・補足する仕様                                                                                                       |
+| -------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Note     | `api/views/notes.py`のViewSet＋`api/urls.py`のSimpleRouter。CSRFトークン付き応答、ページ番号、作成時のCSRFヘッダーを補足 |
+| Greeting | APIView。`serializer_class`から応答を推論                                                                                |
+
+`config/settings.py`で`drf_spectacular`と`AutoSchema`を登録する。TITLEは`App Base API`、VERSIONは`1.0.0`で、派生プロジェクトでは変更する。`COMPONENT_SPLIT_REQUEST`で入力・出力の制約を分ける。
+
+## 生成・閲覧
+
+| コマンド（ルートで実行） | 出力・検査                                          |
+| ------------------------ | --------------------------------------------------- |
+| `pnpm schema:generate`   | `.cache/openapi.yaml`を生成。検証エラー・警告で失敗 |
+| `pnpm api:generate`      | schemaと`frontend/src/types/api.d.ts`を再生成       |
+| `pnpm api:check`         | 生成型とコードの不一致を検出                        |
+
+生成型は管理対象。生成物は直接編集せず、API・依存の変更後に再生成して差分を確認する。`pnpm check`にもschema・型の検査を含む。Web用schemaの生成時は`DESKTOP_TOKEN`を設定しない。
+
+JSON形式で生成する場合：
+
+```sh
+uv run --env-file python.env python backend/manage.py spectacular --format openapi-json --file .cache/openapi.json --validate --fail-on-warn
+```
+
+| WebのURL                   | 内容         |
+| -------------------------- | ------------ |
+| `/api/schema/`             | OpenAPI YAML |
+| `/api/schema/?format=json` | OpenAPI JSON |
+| `/api/docs/`               | Swagger UI   |
+| `/api/redoc/`              | ReDoc        |
+
+仕様は認証なしで閲覧できる。Desktopでは公開しない。Swagger UI・ReDocのJS／CSSはCDNから取得するため、インターネット接続が必要。
+
+## Frontendとの連携
+
+DRF → drf-spectacular → OpenAPI → openapi-typescript → openapi-fetch → Next.jsの順に接続する。
+
+| 担当               | このテンプレートでの用途                                                      |
+| ------------------ | ----------------------------------------------------------------------------- |
+| openapi-typescript | OpenAPIからAPI型を生成                                                        |
+| openapi-fetch      | `utils/runtime.ts`でURL・query・本文・CSRFヘッダーを生成型と照合              |
+| Zod                | JSONの実行時検証とフォームの入力型。Noteのスキーマを`satisfies`で生成型と照合 |
+
+Web通信はGreetingが5秒、Noteが10秒でタイムアウトし、取得キャンセルに対応する。NoteはCookie・CSRFヘッダーを送り、`no-store`を指定。400・403・その他のHTTPエラーを画面用メッセージに変換する。DesktopのGreetingはIPC、MCPは独立したHTTPクライアントを使う。
+
+同じOpenAPIはPython client、mock、自動テスト、AIによるAPI理解にも利用できる。これらの生成処理は未導入。
+
+## 拡張候補
+
+- django-filter：標準設定済み。公開Note APIへのフィルタ適用は未実装。
+- django-allauth：アカウント管理・外部認証が必要な場合。
+- PostgreSQL：SQLiteでは同時利用・運用要件を満たせない場合。
+- Celery：バックグラウンドジョブが必要な場合。
+
+参考：[drf-spectacularの導入](https://drf-spectacular.readthedocs.io/en/latest/readme.html)、[仕様の補足](https://drf-spectacular.readthedocs.io/en/latest/customization.html)。

@@ -1,0 +1,130 @@
+{
+  "version": 1,
+  "positions": {
+    "web-ui": {
+      "x": 912,
+      "y": 32
+    },
+    "desktop-ui": {
+      "x": 784,
+      "y": 352
+    },
+    "native": {
+      "x": 672,
+      "y": 640
+    },
+    "web-backend": {
+      "x": 512,
+      "y": 32
+    },
+    "desktop-backend": {
+      "x": 480,
+      "y": 400
+    },
+    "database": {
+      "x": 512,
+      "y": 176
+    },
+    "mcp-client": {
+      "x": 512,
+      "y": -256
+    },
+    "mcp": {
+      "x": 512,
+      "y": -112
+    },
+    "contracts": {
+      "x": 480,
+      "y": 304
+    }
+  },
+  "edges": {
+    "web-http": {
+      "sourceSide": "left",
+      "targetSide": "right"
+    },
+    "web-storage": {
+      "sourceSide": "bottom",
+      "targetSide": "top"
+    },
+    "desktop-static": {
+      "sourceSide": "left",
+      "targetSide": "right",
+      "sourceSlot": "end",
+      "targetSlot": "start"
+    },
+    "desktop-ipc": {
+      "sourceSide": "right",
+      "targetSide": "right",
+      "targetSlot": "end"
+    },
+    "native-backend": {
+      "sourceSide": "left",
+      "targetSide": "bottom",
+      "sourceSlot": "end"
+    },
+    "mcp-transport": {
+      "sourceSide": "bottom",
+      "targetSide": "top"
+    },
+    "mcp-api": {
+      "sourceSide": "bottom",
+      "targetSide": "top"
+    },
+    "web-contract": {
+      "sourceSide": "left",
+      "targetSide": "right",
+      "sourceSlot": "end"
+    },
+    "desktop-contract": {
+      "sourceSide": "left",
+      "targetSide": "right",
+      "sourceSlot": "start",
+      "targetSlot": "end"
+    },
+    "native-contract": {
+      "sourceSide": "left",
+      "targetSide": "left",
+      "sourceSlot": "end"
+    }
+  },
+  "sizes": {
+    "web-ui": {
+      "width": 160,
+      "height": 96
+    },
+    "desktop-ui": {
+      "width": 160,
+      "height": 96
+    },
+    "native": {
+      "width": 160,
+      "height": 96
+    },
+    "web-backend": {
+      "width": 160,
+      "height": 96
+    },
+    "desktop-backend": {
+      "width": 160,
+      "height": 80
+    },
+    "database": {
+      "width": 160,
+      "height": 96
+    },
+    "mcp-client": {
+      "width": 160,
+      "height": 96
+    },
+    "mcp": {
+      "width": 160,
+      "height": 96
+    },
+    "contracts": {
+      "width": 160,
+      "height": 80
+    }
+  },
+  "nodeColors": {}
+}

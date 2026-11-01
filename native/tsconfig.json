@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "types": ["node"]
+  },
+  "include": [
+    "src/**/*.ts",
+    "../shared/**/*.ts",
+    "tests/src/**/*.ts",
+    "*.config.ts",
+    "../frontend/src/types/desktop.d.ts",
+    "*.config.mts"
+  ]
+}

@@ -1,0 +1,124 @@
+{
+  "version": 1,
+  "nodes": [
+    {
+      "id": "web-ui",
+      "label": "Webブラウザ",
+      "description": "共通frontendを実行。公開Noteと動作確認を利用。"
+    },
+    {
+      "id": "desktop-ui",
+      "label": "Electron renderer",
+      "description": "同じfrontendを実行。Noteは利用不可。"
+    },
+    {
+      "id": "native",
+      "label": "Electron main・preload",
+      "description": "限定bridge、OS判定、Pythonの起動と終了。"
+    },
+    {
+      "id": "web-backend",
+      "label": "Web用Django",
+      "description": "静的画面、Greeting、Note API、Adminを提供。"
+    },
+    {
+      "id": "desktop-backend",
+      "label": "同梱Python・Django",
+      "description": "ローカルで静的画面とトークン保護したGreetingを提供。"
+    },
+    {
+      "id": "database",
+      "label": "Web用SQLite",
+      "description": "公開Note・表示順・変更履歴とDjango管理機能の永続データ。同梱物ではない。"
+    },
+    {
+      "id": "mcp-client",
+      "label": "MCPクライアント",
+      "description": "アプリ外部のツール利用者。"
+    },
+    {
+      "id": "mcp",
+      "label": "MCPサーバー",
+      "description": "list_notes・add_note。Django APIのHTTPクライアント。"
+    },
+    {
+      "id": "contracts",
+      "label": "shared契約",
+      "description": "frontend/nativeが参照する型・応答検証。通信先ではない。"
+    },
+    {
+      "id": "openapi",
+      "label": "OpenAPI・APIドキュメント",
+      "description": "drf-spectacularがDRF定義から生成する機械可読な契約。Swagger UI／ReDocで閲覧。",
+      "href": "../../django/api/index.mdx"
+    }
+  ],
+  "edges": [
+    {
+      "id": "web-http",
+      "source": "web-ui",
+      "target": "web-backend",
+      "label": "HTTP：画面取得・Greeting・Note・Admin"
+    },
+    {
+      "id": "web-storage",
+      "source": "web-backend",
+      "target": "database",
+      "label": "ORM：読み書き"
+    },
+    {
+      "id": "desktop-static",
+      "source": "desktop-ui",
+      "target": "desktop-backend",
+      "label": "HTTP：静的画面取得"
+    },
+    {
+      "id": "desktop-ipc",
+      "source": "desktop-ui",
+      "target": "native",
+      "label": "限定IPC：環境・Greeting"
+    },
+    {
+      "id": "native-backend",
+      "source": "native",
+      "target": "desktop-backend",
+      "label": "子プロセス管理・Bearer付きGreeting取得"
+    },
+    {
+      "id": "mcp-transport",
+      "source": "mcp-client",
+      "target": "mcp",
+      "label": "Streamable HTTP：ツール呼び出し"
+    },
+    {
+      "id": "mcp-api",
+      "source": "mcp",
+      "target": "web-backend",
+      "label": "HTTP：Note一覧・追加（CSRF対応）"
+    },
+    {
+      "id": "web-contract",
+      "source": "web-ui",
+      "target": "contracts",
+      "label": "コード依存：契約・検証"
+    },
+    {
+      "id": "desktop-contract",
+      "source": "desktop-ui",
+      "target": "contracts",
+      "label": "コード依存：契約・検証"
+    },
+    {
+      "id": "native-contract",
+      "source": "native",
+      "target": "contracts",
+      "label": "コード依存：契約・検証"
+    },
+    {
+      "id": "api-schema",
+      "source": "web-backend",
+      "target": "openapi",
+      "label": "DRF定義から生成・公開"
+    }
+  ]
+}

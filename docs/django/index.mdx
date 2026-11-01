@@ -1,0 +1,118 @@
+---
+title: Djangoの実務ノウハウ
+order: 20
+---
+
+# Djangoの実務ノウハウ
+
+Django 5.2での調査・保守・データ準備。以下の`django-extensions`・`django-model-utils`は未導入。
+
+実装済みの機能は[REST APIとOpenAPI](./api/index.mdx)、[Admin拡張とNote管理](./admin/index.mdx)を参照。
+
+## 用途から選ぶ
+
+| 用途                       | 選択肢                                                 |
+| -------------------------- | ------------------------------------------------------ |
+| ORMの調査                  | 標準`shell`。SQL表示などが必要なら`shell_plus`         |
+| 短い保守スクリプト         | `runscript`。業務処理は既存のAction／Serviceを呼ぶ     |
+| 継続運用するCLI            | 標準management command。引数・ヘルプ・エラー処理を定義 |
+| 保存前の差分判定           | `FieldTracker`                                         |
+| 固定したデモ・テストデータ | `dumpdata`／`loaddata`。機密情報を含めない             |
+| リリースに必須の初期データ | データmigration                                        |
+
+## django-extensions
+
+開発用に採用する場合はdev依存に追加し、開発環境だけで`django_extensions`を登録する。現在は開発専用設定がないため、切り替えが必要。共通の`INSTALLED_APPS`へ無条件に登録すると、dev依存を含めない配布環境が起動できない。
+
+### スクリプト実行
+
+`runscript`はDjangoを初期化してスクリプトの`run()`を呼ぶ。引数は`--script-args`で渡す。同名スクリプトは順に実行されるため、名前は用途ごとに一意にする。[実行仕様](https://django-extensions.readthedocs.io/en/latest/runscript.html)
+
+```sh
+# 導入・登録とnotes_checkの作成後、ルートで実行
+uv run --env-file python.env python backend/manage.py runscript notes_check
+```
+
+標準配置はapp内の`scripts/`で、公式例は`__init__.py`も使う。このテンプレートでは未許可の配置なので、導入時にbackend規約と関連チェックを揃える必要がある。ルートの`scripts/`は開発ツール用。
+
+継続利用する処理は`management/commands/`を優先する。どちらも入口は引数処理に留め、業務処理はAction／Serviceへ渡す。更新対象、試行モード、トランザクション、再実行時の扱いを定義する。
+
+### 調査コマンド
+
+| コマンド                 | 用途・注意                                                |
+| ------------------------ | --------------------------------------------------------- |
+| `show_urls`              | URLとViewの対応。認証・権限は別途検証                     |
+| `shell_plus --print-sql` | SQL・N+1の調査。SQLに含まれる利用者データをログへ残さない |
+| `graph_models`           | モデル関連のDOT出力。画像化はGraphviz等が必要             |
+
+Django 5.2の標準`shell`にもモデル自動importがあるため、それだけを目的に`shell_plus`を追加しない。生成したモデル図は調査資料とし、設計文書の代わりにはしない。
+
+参考：[コマンド一覧](https://django-extensions.readthedocs.io/en/latest/command_extensions.html)、[shell_plus](https://django-extensions.readthedocs.io/en/latest/shell_plus.html)、[graph_models](https://django-extensions.readthedocs.io/en/latest/graph_models.html)、[標準shellの自動import](https://docs.djangoproject.com/en/5.2/releases/5.2/#automatic-models-import-in-the-shell)。
+
+## django-model-utils
+
+### FieldTracker
+
+`tracker = FieldTracker(fields=["text"])`のように追跡項目を指定する。非推奨の`ModelTracker`は使わない。
+
+| メソッド              | 戻り値                     |
+| --------------------- | -------------------------- |
+| `has_changed("text")` | 変更の有無                 |
+| `previous("text")`    | 変更前の値                 |
+| `changed()`           | 変更項目と変更前の値の辞書 |
+
+- 比較元は通常、読込時か直近の保存時の値。必要な差分は保存前に取得する。部分保存では`update_fields`との一致を確認する。
+- 新規インスタンスの以前の値は`None`。外部キーはIDで比較し、遅延読込フィールドでは追加クエリが発生し得る。
+- 別プロセス・bulk更新・ManyToManyの変更は追跡しない。競合防止や監査履歴の代わりにはならない。
+- ロールバック後は再利用前にDBから読み直す。通知はServiceから明示し、DB確定後なら`transaction.on_commit()`と再実行方法を検討する。
+
+[FieldTrackerの仕様](https://django-model-utils.readthedocs.io/en/latest/utilities.html#field-tracker)
+
+### その他の候補
+
+| 機能                 | 用途・注意                                                                                              |
+| -------------------- | ------------------------------------------------------------------------------------------------------- |
+| `TimeStampedModel`   | 作成・更新日時を共通化。フィールド名は`created`／`modified`。既存名の変更はmigration・API契約へ影響する |
+| `MonitorField`       | 状態が変わった最後の日時。履歴ではない。部分保存・bulk更新では日時も保存対象にする                      |
+| `StatusModel`        | 状態・変更日時・状態別Manager。遷移ルールや権限は別途実装                                               |
+| `Choices`            | まず標準の`TextChoices`／`IntegerChoices`で足りるか確認                                                 |
+| `SoftDeletableModel` | 論理削除。関連・一意制約・Admin・復元・完全削除まで設計して採用                                         |
+
+参考：[モデル](https://django-model-utils.readthedocs.io/en/latest/models.html)、[MonitorField](https://django-model-utils.readthedocs.io/en/latest/fields.html#monitorfield)、[Choices](https://django-model-utils.readthedocs.io/en/latest/utilities.html#choices)。
+
+## fixture：dumpdata／loaddata
+
+Django標準の固定データ形式。小さなデモ・回帰テストに使う。少量ならテスト内でモデルを作り、業務ルールを通す取込はAction／Serviceを呼ぶ。準備・後始末を担うpytestのfixtureとは別物。[初期データの使い分け](https://docs.djangoproject.com/en/5.2/howto/initial-data/)
+
+### 実行例
+
+開発用の合成データだけを使い、新しい検証用DBへ読み込む。コマンドはルートで実行する。
+
+```sh
+mkdir -p .cache/fixtures
+DJANGO_DB_PATH=.cache/fixtures/source.sqlite3 uv run --env-file python.env python backend/manage.py migrate
+# source.sqlite3に合成データを準備してから書き出す
+DJANGO_DB_PATH=.cache/fixtures/source.sqlite3 uv run --env-file python.env python backend/manage.py dumpdata notes.Note --indent 2 --output .cache/fixtures/notes-demo.json
+DJANGO_DB_PATH=.cache/fixtures/restore.sqlite3 uv run --env-file python.env python backend/manage.py migrate
+DJANGO_DB_PATH=.cache/fixtures/restore.sqlite3 uv run --env-file python.env python backend/manage.py loaddata .cache/fixtures/notes-demo.json
+```
+
+`.cache/fixtures/`は一時確認用。共有する場合は合成データをレビューし、app内の`fixtures/`への配置をbackend規約・チェックと揃える。app名・用途を含む名前と明示したファイルパスで、同名fixtureの取り違えを防ぐ。[探索と保存](https://docs.djangoproject.com/en/5.2/topics/db/fixtures/)
+
+### 注意点
+
+- `loaddata`は同じ主キーの行を上書きする。差分同期ではなく、fixtureにない行は削除しない。
+- 独自`save()`・`full_clean()`・Serializer・業務手順は通らない。保存signalは`raw=True`となるため、通常の関連参照・通知を実行しない。
+- `dumpdata`はdefault managerの絞り込みを受ける。除外行も必要なら`--all`を検討し、対象モデル・件数・関連先を確認する。
+- 関連先PKは環境で異なり得る。`--natural-foreign`／`--natural-primary`にはnatural keyの実装が必要。現在のNoteにはない。
+- 認証情報・セッションを含む全appのdumpは避け、必要なモデルと関連先に限定する。機密データをGitへ保存しない。
+- fixtureはスキーマ・添付ファイルを含むバックアップではない。モデル変更後は読込を検証し、`--ignorenonexistent`で不整合を隠さない。
+
+参考：[dumpdata](https://docs.djangoproject.com/en/5.2/ref/django-admin/#dumpdata)、[読込時の挙動](https://docs.djangoproject.com/en/5.2/topics/db/fixtures/#how-fixtures-are-saved-to-the-database)、[再読込による上書き](https://docs.djangoproject.com/en/5.2/howto/initial-data/#provide-data-with-fixtures)。
+
+## 採用時の確認
+
+依存・lockfile、Django／Python対応、配置規約、型チェックを確認する。モデルから使うライブラリは実行時依存にし、PyInstallerの同梱・起動も確認する。
+
+- FieldTracker：新規・通常保存・部分保存・再読込・ロールバック。
+- fixture：空DBへの投入・再投入・関連不足・スキーマ変更。

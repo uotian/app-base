@@ -1,0 +1,74 @@
+---
+title: 全体構成
+order: 1
+---
+
+# 全体構成
+
+## 構成図と責務
+
+<LayoutGroup id="system-structure">
+  <LayoutItem>
+
+<Diagram src="./_flow" />
+
+矢印は通信・管理・契約参照の主体から相手へ向く。処理順は表さない。Web用とDesktop用のbackendは同じソースを使う別プロセスで、相互に接続しない。
+
+  </LayoutItem>
+  <LayoutItem>
+
+| 要素       | 責務・配置                                                                                                                   |
+| ---------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| 共通画面   | `frontend/src/`。画面・入力検証・表示状態。通信とDesktop bridgeは`utils/runtime.ts`へ集約。                                  |
+| Electron   | `native/src/`。Pythonの起動・終了、ウィンドウ、IPC、OS判定。                                                                 |
+| Django     | `backend/src/api/`がHTTP入口、`apps/`が業務処理・ORMによる永続化。Noteの一覧・作成は標準Managerを利用。                      |
+| Admin      | `backend/src/apps/notes/admins/`。Webの管理画面。                                                                            |
+| MCP        | `mcp/src/`。`server.py`・`registry.py`で登録し、`notes/tools/` → `notes/django/` → Django APIの順に呼ぶ。                    |
+| 共通契約   | `shared/contracts.ts`。frontend/nativeが使うGreeting・Environment・DesktopBridgeの型と応答検証。外部ライブラリに依存しない。 |
+| 永続データ | SQLite。設定は`backend/src/config/settings.py`。                                                                             |
+
+  </LayoutItem>
+</LayoutGroup>
+
+API契約はDRFから生成する[OpenAPI](../django/api/index.mdx)を正本とする。
+
+## Web
+
+Waitress・WhiteNoiseがNext.jsの静的出力`frontend/out/`とDjango APIを同一オリジンで配信する。Next.jsの実行時サーバーは使わない。
+
+| 実行形態 | 接続先                                                                      |
+| -------- | --------------------------------------------------------------------------- |
+| 通常     | `127.0.0.1:8000`で画面とAPIを配信                                           |
+| 開発     | Next.jsは3100、Djangoは8100。CORS・CSRFの許可元は3100のlocalhost／127.0.0.1 |
+
+画面はTanStack Queryで取得状態を管理し、Note追加の成功・失敗後に一覧を再取得する。入力はReact Hook Form・Zod、APIはDRF Serializerで検証する。Noteの検証定義はfrontendの`utils/notes-schema.ts`、backendの`api/serializers/notes.py`、MCPの`notes/schemas.py`に置く。
+
+Noteの閲覧・追加は認証不要。追加にはCookieとCSRFトークンが必要で、CSRFは閲覧制限ではない。管理操作とJSON取込は[Admin拡張とNote管理](../django/admin/index.mdx)を参照する。
+
+## Desktop
+
+`native/src/backend.ts`がPythonを子プロセスとして起動する。開発時はuv、配布時は同梱実行ファイルを使う。Pythonはloopbackの空きポートで待ち受け、ポートをstdoutのJSONで通知する。rendererはそこから静的画面を取得する。
+
+- preloadの公開操作は`getEnvironment`・`getGreeting`のみ。OS判定はmain、GreetingはmainからPythonへHTTPで問い合わせる。
+- Bearerトークンは起動ごとに生成し、rendererへ渡さない。`DESKTOP_TOKEN`を設定するとNote・Admin・OpenAPI関連のルートは登録されない。
+- context isolation・sandboxを有効にし、rendererのNode統合を無効にする。IPCのウィンドウ・main frame・originを検証し、新規ウィンドウ・別originへの移動・権限要求を拒否する。
+- 起動待ちは30秒。終了時はstdinを閉じ、8秒で終了しなければ強制終了する。稼働中にPythonが終了した場合はエラー表示後にアプリを終了する。
+
+## MCP
+
+Electronとは別プロセスで動き、Streamable HTTPを`127.0.0.1:8200`に公開する。Django APIの接続先は既定で`http://127.0.0.1:8100`。通常のWeb起動に接続する場合は`--api-url http://127.0.0.1:8000`を指定する。
+
+接続先はHTTP(S)のoriginのみ許可し、認証情報・パス・query・fragmentを拒否する。Note追加時は同じHTTPクライアントでCookie・CSRFトークンを取得してPOSTする。応答はPydanticで検証し、通信エラーに生の応答や接続詳細を含めない。DBやDjangoの実装には直接アクセスしない。
+
+## 配布物とデータ
+
+| 区分           | 生成元 → 配置                                                                              |
+| -------------- | ------------------------------------------------------------------------------------------ |
+| 静的画面       | Next.js → `frontend/out/`。Web・Electronで共用                                             |
+| Electronコード | esbuild → `native/dist/`                                                                   |
+| 同梱Python     | `backend/backend.spec`（PyInstaller）→ `backend/dist/backend/`。Djangoの静的ファイルも同梱 |
+| macOSアプリ    | electron-builder → `native/release/`。画面とPythonをResourcesへ同梱。MCPは対象外           |
+| 開発環境       | ルートのpnpm・uv・lockfileで管理。実行コマンドは`package.json`                             |
+| 利用者DB       | Webは既定でルートの`db.sqlite3`。`DJANGO_DB_PATH`で変更可。ElectronはuserData配下を指定    |
+
+利用者DBは同梱せず、起動時にmigrationも自動実行しない。現在のDesktopにNoteの保存機能はない。macOSアプリの署名・公証は未設定。

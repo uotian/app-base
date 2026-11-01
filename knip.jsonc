@@ -1,0 +1,25 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  // Python tooling is installed through uv, outside package.json.
+  "ignoreBinaries": ["uv"],
+  // Ambient React DOM types and the parser used by eslint-config-next.
+  "ignoreDependencies": ["@types/react-dom", "typescript-eslint"],
+  "workspaces": {
+    ".": {},
+    "frontend": {
+      // Installed at the user's request; remove each exception when adopted in code.
+      "ignoreDependencies": ["date-fns", "next-intl", "lucide-react"],
+      // shadcn's components.json references this helper for generated components.
+      "entry": ["src/utils/cn.ts"],
+      // Preserve upstream shadcn exports and generated OpenAPI declarations.
+      "ignoreIssues": {
+        "src/ui/{button,card}.tsx": ["exports"],
+        "src/types/api.d.ts": ["exports", "types"],
+      },
+    },
+    "native": {
+      // Electron loads preload by filename, without a JavaScript import.
+      "entry": ["src/preload.ts"],
+    },
+  },
+}

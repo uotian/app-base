@@ -1,0 +1,25 @@
+node_modules/
+.next/
+frontend/next-env.d.ts
+out/
+dist/
+build/
+release/
+.venv/
+.cache/
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.pyc
+.env*
+!.env.example
+*.tsbuildinfo
+playwright-report/
+**/tests/results/
+.DS_Store
+*.sqlite3
+*.sqlite3-*
+
+# Local documentation backups
+/docs.[0-9]*/
