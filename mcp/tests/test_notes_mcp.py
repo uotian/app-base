@@ -29,7 +29,8 @@ def running_server(command, log_path, env):
             stderr=log,
         )
         try:
-            deadline = time.monotonic() + 15
+            # Cold CI runners need time for Django startup checks.
+            deadline = time.monotonic() + 60
             while time.monotonic() < deadline:
                 if process.poll() is not None:
                     log.seek(0)
@@ -40,7 +41,8 @@ def running_server(command, log_path, env):
                 except OSError:
                     time.sleep(0.05)
             else:
-                pytest.fail("Test server did not start")
+                log.seek(0)
+                pytest.fail(f"Test server did not start within 60 seconds:\n{log.read()}")
             yield f"http://127.0.0.1:{port}"
         finally:
             process.terminate()
